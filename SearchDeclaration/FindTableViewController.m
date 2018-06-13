@@ -18,6 +18,7 @@
     NSMutableArray *linkPDF;
     NSMutableArray *placeOfWork;
     NSMutableArray *position;
+    NSMutableArray *dID;
     bool isText;
     int totalItems;
     int page;
@@ -30,6 +31,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
     _searchBar.delegate = self;
     _searchBar.frame = CGRectMake(0, 40, 200, 50);
     isText = false;
@@ -38,6 +40,10 @@
 
 -(void)viewWillAppear:(BOOL)animated {
     [self.navigationController.navigationBar.topItem setTitle: @"Search"];
+    [self.tableView reloadData];
+    _managedCoreData = [[ManagedCoreData alloc] init];
+    self.favoriteDB = [_managedCoreData getData];
+    
 }
 
 -(void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
@@ -62,18 +68,6 @@
     }
 }
 
-- (BOOL)textFieldShouldReturn:(UITextField *)textField {
-    [commentTF removeFromSuperview];
-    [saveArray setValue:textField.text forKey:@"comment"];
-    [commentTF endEditing:YES];
-    ManagedCoreData *managedCoreData = [[ManagedCoreData alloc] init];
-    if(![managedCoreData addData:saveArray]) {
-        [Alert showAlertMessage:@"Додати не вдалося" title:@"Помилка"];
-    }
-    return YES;
-}
-
-
 #pragma mark - Table view data source
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
@@ -87,11 +81,23 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     TableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell" forIndexPath:indexPath];
     
+    cell.dID = [dID objectAtIndex:indexPath.row];
+    
+    [cell.favorite setEnabled:YES];
+    [cell.favorite setImage:[UIImage imageNamed:@"icons8-star-50.png"] forState:UIControlStateNormal];
+    for (NSString * coreID in [_favoriteDB valueForKey:@"id"]) {
+        if ([coreID isEqualToString:[dID objectAtIndex:indexPath.row]]) {
+            [cell.favorite setImage:[UIImage imageNamed:@"icons8-star-filled-50.png"] forState:UIControlStateNormal];
+            [cell.favorite setEnabled:NO];
+        }
+    }
+    
     if ([[linkPDF objectAtIndex:indexPath.row] isEqual:@"-"]) {
         [cell.pdfButton setEnabled:NO];
     } else {
         cell.pdfURL = [linkPDF objectAtIndex: indexPath.row];
     }
+    
     cell.fullName.text = [name objectAtIndex:indexPath.row];
     cell.placeOfWork.text = [position objectAtIndex:indexPath.row];
     cell.positionWork.text = [placeOfWork objectAtIndex:indexPath.row];;
@@ -122,13 +128,15 @@
     [self.navigationController pushViewController:controller animated:YES];
 }
 
--(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF {
-    // [saveArray removeAllObjects];
+-(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF dID:(NSString *)dID {
+    [self.tableView setUserInteractionEnabled:NO];
+    
     saveArray = [[NSMutableDictionary alloc]init];
     [saveArray setValue:fullName forKey:@"fullName"];
     [saveArray setValue:position forKey:@"position"];
     [saveArray setValue:placeOfWork forKey:@"placeOfWork"];
     [saveArray setValue:linkPDF forKey:@"linkPDF"];
+    [saveArray setValue:dID forKey:@"id"];
     
     commentTF = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 50)];
     [commentTF setReturnKeyType:UIReturnKeyDone];
@@ -149,6 +157,19 @@
     commentTF.delegate = self;
     
     [self.view addSubview:commentTF];
+}
+
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [commentTF removeFromSuperview];
+    [saveArray setValue:textField.text forKey:@"comment"];
+    [commentTF endEditing:YES];
+    ManagedCoreData *managedCoreData = [[ManagedCoreData alloc] init];
+    if(![managedCoreData addData:saveArray]) {
+        [Alert showAlertMessage:@"Додати не вдалося" title:@"Помилка"];
+    }
+    [self.tableView setUserInteractionEnabled:YES];
+    return YES;
 }
 
 - (void)getJSONData:(NSString *)premeter {
@@ -196,13 +217,16 @@
                 self->linkPDF = [NSMutableArray new];
                 self->placeOfWork = [NSMutableArray new];
                 self->position = [NSMutableArray new];
+                self->dID = [NSMutableArray new];
             }
             for (NSDictionary * dict in dict1) {
                 NSString *name = [NSString stringWithFormat:@"%@ %@", [dict objectForKey:@"lastname"], [dict objectForKey:@"firstname"]];
                 NSString *linkPDF = [dict objectForKey:@"linkPDF"];
                 NSString *placeOfWork = [dict objectForKey:@"placeOfWork"];
                 NSString *position = [dict objectForKey:@"position"];
+                NSString *ID = [dict objectForKey:@"id"];
                 
+                [self->dID addObject:ID];
                 [self->name addObject: name ];
                 [self->placeOfWork addObject: placeOfWork];
                 
@@ -245,6 +269,7 @@
 
 
 @end
+
 
 
 

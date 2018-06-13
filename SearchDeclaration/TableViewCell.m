@@ -17,6 +17,7 @@
 
 @synthesize delegate;
 @synthesize pdfURL;
+@synthesize dID;
 @synthesize comment;
 
 - (void)awakeFromNib {
@@ -38,7 +39,8 @@
 
 - (IBAction)addToFavorite:(id)sender {
     [_favorite setImage:[UIImage imageNamed:@"icons8-star-filled-50.png"] forState:UIControlStateNormal];
-    [self.delegate addToFavorite:[_fullName text] position:[_positionWork text] placeOfWork:[_placeOfWork text] linkPDF:pdfURL];
+    [_favorite setEnabled:NO];
+    [self.delegate addToFavorite:[_fullName text] position:[_positionWork text] placeOfWork:[_placeOfWork text] linkPDF:pdfURL dID:dID];
 }
 
 @end

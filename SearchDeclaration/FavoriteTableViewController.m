@@ -80,6 +80,7 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [self.tableView setUserInteractionEnabled:NO];
     [commentTF removeFromSuperview];
     editCellIndexPath = indexPath;
     TableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
@@ -111,6 +112,7 @@
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [self.tableView setUserInteractionEnabled:YES];
     TableViewCell *cell = [self.tableView cellForRowAtIndexPath:editCellIndexPath];
     cell.comment.text = commentTF.text;
     [commentTF removeFromSuperview];

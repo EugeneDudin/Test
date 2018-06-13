@@ -382,7 +382,7 @@
 				DEVELOPMENT_TEAM = 4MHV9K62QJ;
 				INFOPLIST_FILE = SearchDeclaration/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = jd.SearchDeclaration;
+				PRODUCT_BUNDLE_IDENTIFIER = jdv.SearchDeclaration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -396,7 +396,7 @@
 				DEVELOPMENT_TEAM = 4MHV9K62QJ;
 				INFOPLIST_FILE = SearchDeclaration/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				PRODUCT_BUNDLE_IDENTIFIER = jd.SearchDeclaration;
+				PRODUCT_BUNDLE_IDENTIFIER = jdv.SearchDeclaration;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

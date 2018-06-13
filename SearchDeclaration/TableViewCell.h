@@ -10,7 +10,7 @@
 
 @protocol CellActionDelegate <NSObject>
 -(void)loadPDFScreen:(UIViewController *)controller;
--(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF;
+-(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF dID:(NSString *)dID;
 @end
 
 @interface TableViewCell : UITableViewCell
@@ -18,6 +18,7 @@
 @property (weak, nonatomic) IBOutlet UIButton *favorite;
 @property (nonatomic, weak) id<CellActionDelegate> delegate;
 @property NSString *pdfURL;
+@property NSString *dID;
 
 @property (weak, nonatomic) IBOutlet UILabel *comment;
 @property (weak, nonatomic) IBOutlet UILabel *fullName;
