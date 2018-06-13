@@ -13,7 +13,7 @@
 #import "Alert.h"
 
 @interface FindTableViewController ()<CellActionDelegate> {
-    NSMutableArray *saveArray;
+    NSMutableDictionary *saveArray;
     NSMutableArray *name;
     NSMutableArray *linkPDF;
     NSMutableArray *placeOfWork;
@@ -123,8 +123,8 @@
 }
 
 -(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF {
-    [saveArray removeAllObjects];
-    saveArray = [[NSMutableArray alloc]init];
+    // [saveArray removeAllObjects];
+    saveArray = [[NSMutableDictionary alloc]init];
     [saveArray setValue:fullName forKey:@"fullName"];
     [saveArray setValue:position forKey:@"position"];
     [saveArray setValue:placeOfWork forKey:@"placeOfWork"];

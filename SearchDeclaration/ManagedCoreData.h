@@ -15,7 +15,7 @@
 @property (strong, nonatomic)NSManagedObjectContext *context;
 @property (strong, nonatomic)NSFetchRequest *fetchRequest;
 
-- (BOOL)addData:(NSMutableArray *)data;
+- (BOOL)addData:(NSDictionary *)data;
 - (NSMutableArray *)getData;
 - (BOOL)updateDataAtIndex:(NSInteger)index newValue:(NSString *)value forKey:(NSString *)key;
 - (BOOL)deleteDataForIndex:(NSInteger)index;
