@@ -9,64 +9,46 @@
 #import "FavoriteTableViewController.h"
 #import "AppDelegate.h"
 #import "TableViewCell.h"
+#import "ManagedCoreData.h"
+#import "Alert.h"
 
-@interface FavoriteTableViewController ()
+@interface FavoriteTableViewController ()<UITextFieldDelegate, CellActionDelegate>
 
 @end
 
 @implementation FavoriteTableViewController
 
-@synthesize delegate;
+@synthesize commentTF, editCellIndexPath;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    _managedCoreData = [[ManagedCoreData alloc] init];
 }
 
 -(void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self.navigationController.navigationBar.topItem setTitle: @"Favorite"];
-    
-    NSManagedObjectContext *managedObjectContext = [self managedObjectContext];
-    NSFetchRequest *fetchRequest = [[NSFetchRequest alloc] initWithEntityName:@"Favorite"];
-    self.favoriteDB = [[managedObjectContext executeFetchRequest:fetchRequest error:nil] mutableCopy];
+
+    self.favoriteDB = [_managedCoreData getData];
     
     [self.tableView reloadData];
-}
-
-- (NSManagedObjectContext *)managedObjectContext
-{
-    NSManagedObjectContext *context = nil;
-    id delegate = [[UIApplication sharedApplication] delegate];
-    if ([delegate performSelector:@selector(managedObjectContext)]) {
-        context = [delegate managedObjectContext];
-    }
-    return context;
-}
-
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
 }
 
 #pragma mark - Table view data source
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-#warning Incomplete implementation, return the number of sections
     return 1;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-#warning Incomplete implementation, return the number of rows
     return self.favoriteDB.count;
 }
-
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     TableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell" forIndexPath:indexPath];
     
     NSManagedObject *favorite = [_favoriteDB objectAtIndex:indexPath.row];
-    cell.delegate = self;
-    
+
     if ([[favorite valueForKey:@"linkPDF"] isEqual:@"-"]) {
         [cell.pdfButton setEnabled:NO];
     } else {
@@ -77,61 +59,72 @@
     cell.positionWork.text = [favorite valueForKey:@"position"];
     cell.comment.text = [favorite valueForKey:@"comment"];
     
-    
+    cell.delegate = self;
     
     return cell;
 }
 
-// Override to support conditional editing of the table view.
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Return NO if you do not want the specified item to be editable.
     return YES;
 }
 
-// Override to support editing the table view.
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {
-    
-    NSManagedObjectContext *context = [self managedObjectContext];
-    
     if (editingStyle == UITableViewCellEditingStyleDelete) {
-        
-        [context deleteObject:[self.favoriteDB objectAtIndex:indexPath.row]];
-        
-        NSError *error = nil;
-        if (![context save:&error]) {
-            NSLog(@"Can't Delete! %@ %@", error, [error localizedDescription]);
-            return;
+        if (![_managedCoreData deleteDataForIndex:indexPath.row]) {
+                [Alert showAlertMessage:@"не вдалося" title:@"Помилка"];
         }
-        
-        // Remove device from table view
+        [commentTF removeFromSuperview];
         [self.favoriteDB removeObjectAtIndex:indexPath.row];
         [self.tableView deleteRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:UITableViewRowAnimationFade];
     }
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    [commentTF removeFromSuperview];
+    editCellIndexPath = indexPath;
+    TableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+    
+    commentTF = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 50)];
+    commentTF.text = cell.comment.text;
+    [commentTF setReturnKeyType:UIReturnKeyDone];
+    [commentTF setBorderStyle:UITextBorderStyleNone];
+    commentTF.leftViewMode = UITextFieldViewModeAlways;
+    
+    UIView *paddingView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 50)];
+    commentTF.leftView = paddingView;
+    
+    commentTF.placeholder = @"Додати коментар";
+    commentTF.backgroundColor = [UIColor whiteColor];
+    commentTF.layer.cornerRadius = 15.0;
+    commentTF.layer.borderWidth = 2.0;
+    commentTF.layer.borderColor = [UIColor lightGrayColor].CGColor;
+    commentTF.layer.masksToBounds = YES;
+    [commentTF becomeFirstResponder];
+    
+    commentTF.delegate = self;
+    
+    [self.view addSubview:commentTF];
 }
 
 -(void)loadPDFScreen:(UIViewController *)controller {
     [self.navigationController pushViewController:controller animated:YES];
 }
 
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    TableViewCell *cell = [self.tableView cellForRowAtIndexPath:editCellIndexPath];
+    cell.comment.text = commentTF.text;
+    [commentTF removeFromSuperview];
+    
+    ManagedCoreData *managedCoreData = [[ManagedCoreData alloc] init];
+    [managedCoreData updateDataAtIndex:editCellIndexPath.row newValue:cell.comment.text forKey:@"comment"];
+    
+    return YES;
+}
+
 -(void)updateComment:(NSString *)comment {
-    
-    NSManagedObjectContext *context = [self managedObjectContext];
-    NSManagedObject *selectedData = [self.favoriteDB objectAtIndex:[[self.tableView indexPathForSelectedRow] row]];
-    
-    if (selectedData) {
-        [selectedData setValue:comment forKey:@"comment"];
-    }
-    NSError *error = nil;
-    // Save the object to persistent store
-    if (![context save:&error]) {
-        NSLog(@"Can't Save! %@ %@", error, [error localizedDescription]);
+    if (![_managedCoreData updateDataAtIndex:[[self.tableView indexPathForSelectedRow] row] newValue:comment forKey:@"comment"]) {
+        [Alert showAlertMessage:@"Оновлення не вдалося" title:@"Помилка"];
     }
 }
-
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    TableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-    [cell updateComment];
-}
-
 
 @end

@@ -8,11 +8,11 @@
 
 #import <UIKit/UIKit.h>
 #import "AppDelegate.h"
-#import <CoreData/CoreData.h>
 
-@interface FindTableViewController : UITableViewController<UISearchBarDelegate>
+@interface FindTableViewController : UITableViewController<UISearchBarDelegate, UITextFieldDelegate>
 
 @property (weak, nonatomic) IBOutlet UISearchBar *searchBar;
-@property (strong) NSManagedObject *favoritbd;
 @property (strong, nonatomic) UIActivityIndicatorView *activityIndicatorView;
+@property (strong, nonatomic) UITextField *commentTF;
+
 @end

@@ -8,79 +8,84 @@
 
 #import "FindTableViewController.h"
 #import "TableViewCell.h"
+#import "WebService.h"
+#import "ManagedCoreData.h"
+#import "Alert.h"
 
-@interface FindTableViewController () {
+@interface FindTableViewController ()<CellActionDelegate> {
+    NSMutableArray *saveArray;
     NSMutableArray *name;
     NSMutableArray *linkPDF;
     NSMutableArray *placeOfWork;
     NSMutableArray *position;
     bool isText;
-}
-
-@end
-
-@implementation NSString (URLEncoding)
-- (nullable NSString *)stringByAddingPercentEncodingForRFC3986 {
-    NSString *unreserved = @"-._~/?";
-    NSMutableCharacterSet *allowed = [NSMutableCharacterSet
-                                      alphanumericCharacterSet];
-    [allowed addCharactersInString:unreserved];
-    return [self
-            stringByAddingPercentEncodingWithAllowedCharacters:
-            allowed];
+    int totalItems;
+    int page;
 }
 @end
 
 @implementation FindTableViewController
-@synthesize favoritbd, activityIndicatorView;
+
+@synthesize activityIndicatorView, commentTF;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
     _searchBar.delegate = self;
+    _searchBar.frame = CGRectMake(0, 40, 200, 50);
     isText = false;
-}
-
--(void)viewDidAppear:(BOOL)animated {
-    [super viewDidAppear:animated];
-    // [self.view endEditing:NO];
-    // [_searchBar becomeFirstResponder];
+    page = 1;
 }
 
 -(void)viewWillAppear:(BOOL)animated {
     [self.navigationController.navigationBar.topItem setTitle: @"Search"];
 }
 
-- (NSManagedObjectContext *)managedObjectContext {
-    NSManagedObjectContext *context = nil;
-    id delegate = [[UIApplication sharedApplication] delegate];
-    if ([delegate performSelector:@selector(managedObjectContext)]) {
-        context = [delegate managedObjectContext];
+-(void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
+    if (searchText.length > 0) {
+        isText = true;
+    } else {
+        isText = false;
     }
-    return context;
 }
 
-- (void)didReceiveMemoryWarning {
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
+- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
+    [name removeAllObjects];
+    [linkPDF removeAllObjects];
+    [position removeAllObjects];
+    [placeOfWork removeAllObjects];
+    [self.tableView reloadData];
+    if (isText) {
+        page = 1;
+        totalItems = 0;
+        [self getJSONData: searchBar.text];
+        [self.view endEditing:YES];
+    }
 }
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [commentTF removeFromSuperview];
+    [saveArray setValue:textField.text forKey:@"comment"];
+    [commentTF endEditing:YES];
+    ManagedCoreData *managedCoreData = [[ManagedCoreData alloc] init];
+    if(![managedCoreData addData:saveArray]) {
+        [Alert showAlertMessage:@"Додати не вдалося" title:@"Помилка"];
+    }
+    return YES;
+}
+
 
 #pragma mark - Table view data source
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-#warning Incomplete implementation, return the number of sections
     return 1;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-#warning Incomplete implementation, return the number of rows
     return name.count;
 }
 
-
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     TableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell" forIndexPath:indexPath];
-    
-    cell.delegate = self;
     
     if ([[linkPDF objectAtIndex:indexPath.row] isEqual:@"-"]) {
         [cell.pdfButton setEnabled:NO];
@@ -91,121 +96,108 @@
     cell.placeOfWork.text = [position objectAtIndex:indexPath.row];
     cell.positionWork.text = [placeOfWork objectAtIndex:indexPath.row];;
     
+    cell.delegate = self;
+    
     return cell;
+}
+
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
+    NSInteger lastSectionIndex = [tableView numberOfSections] - 1;
+    NSInteger lastRowIndex = [tableView numberOfRowsInSection:lastSectionIndex] - 1;
+    if ((indexPath.section == lastSectionIndex) && (indexPath.row == lastRowIndex)) {
+        if (totalItems != name.count) {
+            page += 1;
+            [self getJSONData:_searchBar.text];
+        }
+    }
+}
+
+-(void)reloadTableView {
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        [self.tableView reloadData];
+    });
 }
 
 -(void)loadPDFScreen:(UIViewController *)controller {
     [self.navigationController pushViewController:controller animated:YES];
 }
 
--(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF comment:(NSString *)comment {
+-(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF {
+    [saveArray removeAllObjects];
+    saveArray = [[NSMutableArray alloc]init];
+    [saveArray setValue:fullName forKey:@"fullName"];
+    [saveArray setValue:position forKey:@"position"];
+    [saveArray setValue:placeOfWork forKey:@"placeOfWork"];
+    [saveArray setValue:linkPDF forKey:@"linkPDF"];
     
-    NSManagedObjectContext *context = [self managedObjectContext];
-    NSManagedObject *addToFavorite = [NSEntityDescription insertNewObjectForEntityForName:@"Favorite" inManagedObjectContext:context];
+    commentTF = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 50)];
+    [commentTF setReturnKeyType:UIReturnKeyDone];
+    [commentTF setBorderStyle:UITextBorderStyleNone];
+    commentTF.leftViewMode = UITextFieldViewModeAlways;
     
-    [addToFavorite setValue:fullName forKey:@"fullName"];
-    [addToFavorite setValue:placeOfWork forKey:@"placeOfWork"];
-    [addToFavorite setValue:linkPDF forKey:@"linkPDF"];
-    [addToFavorite setValue:position forKey:@"position"];
-    [addToFavorite setValue:comment forKey:@"comment"];
+    UIView *paddingView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 50)];
+    commentTF.leftView = paddingView;
     
-    NSError *error = nil;
-    // Save the object to persistent store
-    if (![context save:&error]) {
-        NSLog(@"Can't Save! %@ %@", error, [error localizedDescription]);
-    }
+    commentTF.placeholder = @"Додати коментар";
+    commentTF.backgroundColor = [UIColor whiteColor];
+    commentTF.layer.cornerRadius = 15.0;
+    commentTF.layer.borderWidth = 2.0;
+    commentTF.layer.borderColor = [UIColor lightGrayColor].CGColor;
+    commentTF.layer.masksToBounds = YES;
+    [commentTF becomeFirstResponder];
+    
+    commentTF.delegate = self;
+    
+    [self.view addSubview:commentTF];
 }
 
--(void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
-    
-    if (searchText.length > 0) {
-        isText = true;
-    } else {
-        isText = false;
-    }
-}
-
-- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
-    
-    [name removeAllObjects];
-    [linkPDF removeAllObjects];
-    [position removeAllObjects];
-    [placeOfWork removeAllObjects];
-    
-    if (isText) {
-        NSString *query = searchBar.text;
-        NSString *encoded = [query stringByAddingPercentEncodingForRFC3986];
-        NSString *targetUrl = [NSString stringWithFormat:@"https://public-api.nazk.gov.ua/v1/declaration/?q=%@", encoded];
-        
-        [self getJSONData: targetUrl];
-        [self.view endEditing:YES];
-    }
-}
-
--(void)getJSONData:(NSString *)url {
-    
-    self.activityIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
-    self.activityIndicatorView.center = CGPointMake( [UIScreen mainScreen].bounds.size.width/2,[UIScreen mainScreen].bounds.size.height/2);
-    [self.activityIndicatorView startAnimating];
-    
-    AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication] delegate];
-    [appDelegate.window addSubview: activityIndicatorView];
-    
-    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] init];
-    [request setURL:[NSURL URLWithString: url]];
-    
-    NSURLSessionDataTask *task = [[self getURLSession] dataTaskWithRequest:request completionHandler:^( NSData *data, NSURLResponse *response, NSError *error )
-                                  {
-                                      if (data == nil) {
-                                          if (error != nil) {
-                                              [self showAlert:@"Помилка" message:error.localizedDescription];
-                                              dispatch_sync(dispatch_get_main_queue(), ^{
-                                                  if (name.count > 0) {
-                                                      [name removeAllObjects];
-                                                      [linkPDF removeAllObjects];
-                                                      [placeOfWork removeAllObjects];
-                                                      [position removeAllObjects];
-                                                  }
-                                                  
-                                                  [self.tableView reloadData];
-                                                  [activityIndicatorView stopAnimating];
-                                                  
-                                              });
-                                          } else {
-                                              [self showAlert:@"Помилка" message: @""];
-                                          }
-                                      } else {
-                                          [self parseJSON:data];
-                                      }
-                                  }];
-    [task resume];
+- (void)getJSONData:(NSString *)premeter {
+    [self startActivityIndicator];
+    [WebService executeQuery:@"https://public-api.nazk.gov.ua/v1/declaration/?q=" premeter:[NSString stringWithFormat:@"%@", premeter] page:page withblock:^(NSData *data, NSError *error) {
+        if (error == nil) {
+            [self parseJSON:data];
+        } else {
+            [self presentViewController:[Alert showAlertMessage:error.localizedDescription title:@"Помилка"] animated:YES completion:nil];
+        }
+        [self reloadTableView];
+        [self stopActivityIndicator];
+    }];
 }
 
 -(void)parseJSON:(NSData *) jsonData {
     NSError *jsonError;
     NSDictionary *parsedJSONArray = [NSJSONSerialization JSONObjectWithData:jsonData options:NSJSONReadingMutableContainers error:&jsonError];
     
-    NSLog(@"parsedJSONArray %@", parsedJSONArray );
     if (parsedJSONArray.count > 0) {
         NSString *error =  [parsedJSONArray objectForKey:@"error"];
         NSString *message = [parsedJSONArray objectForKey:@"message"];
+        
+        if (!totalItems) {
+            NSDictionary *item = [parsedJSONArray objectForKey:@"page"];
+            totalItems = [[item objectForKey:@"totalItems"] intValue];
+        }
         if (error) {
-            [self showAlert:@"Помилка" message:message];
+            if (!name || name.count == 0 || name.count !=  totalItems) {
+                [self presentViewController:[Alert showAlertMessage:message title:@"Помилка"] animated:YES completion:nil];
+            }
+            [self stopActivityIndicator];
+            return;
         }
         
         NSDictionary *dict1 = [parsedJSONArray objectForKey:@"items"];
-        NSLog(@"DICT %@", dict1);
-        if (dict1 == nil) {
-            [self showAlert:@"Помилка" message:@""];
+        
+        if (dict1 == nil && name.count == totalItems) {
+            return;
+        } else if (dict1 == nil) {
+            [self presentViewController:[Alert showAlertMessage:@"" title:@"Помилка"] animated:YES completion:nil];
         } else {
-            self->name = [NSMutableArray new];
-            self->linkPDF = [NSMutableArray new];
-            self->placeOfWork = [NSMutableArray new];
-            self->position = [NSMutableArray new];
-            
+            if (page == 1) {
+                self->name = [NSMutableArray new];
+                self->linkPDF = [NSMutableArray new];
+                self->placeOfWork = [NSMutableArray new];
+                self->position = [NSMutableArray new];
+            }
             for (NSDictionary * dict in dict1) {
-                
-                
                 NSString *name = [NSString stringWithFormat:@"%@ %@", [dict objectForKey:@"lastname"], [dict objectForKey:@"firstname"]];
                 NSString *linkPDF = [dict objectForKey:@"linkPDF"];
                 NSString *placeOfWork = [dict objectForKey:@"placeOfWork"];
@@ -226,46 +218,31 @@
                     [self->position addObject: position];
                 }
             }
-            dispatch_sync(dispatch_get_main_queue(), ^{
-                [self.tableView reloadData];
-                [activityIndicatorView stopAnimating];
-            });
         }
         
-    } else {
-        NSLog(@"error");
-        [self showAlert:@"Помилка" message:@""];
     }
-    
 }
 
-- ( NSURLSession * )getURLSession {
-    static NSURLSession *session = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once( &onceToken,
-                  ^{
-                      NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
-                      session = [NSURLSession sessionWithConfiguration:configuration];
-                  } );
+-(void)startActivityIndicator {
+    self.activityIndicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+    self.activityIndicatorView.center = CGPointMake( [UIScreen mainScreen].bounds.size.width/2,[UIScreen mainScreen].bounds.size.height/2);
+    [self.activityIndicatorView startAnimating];
     
-    return session;
+    AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication] delegate];
+    [appDelegate.window addSubview: activityIndicatorView];
+}
+
+- (void)stopActivityIndicator {
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        [activityIndicatorView stopAnimating];
+    });
 }
 
 -(BOOL)prefersStatusBarHidden{
     return YES;
 }
 
--(void)showAlert:(NSString *)title message:(NSString *)message {
-    UIAlertController* alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    
-    UIAlertAction* defaultAction = [UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault
-                                                          handler:^(UIAlertAction * action) {}];
-    
-    [alert addAction:defaultAction];
-    [self presentViewController:alert animated:YES completion:nil];
-}
+
 
 @end
 
