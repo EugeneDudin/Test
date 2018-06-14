@@ -17,8 +17,9 @@
 
 @synthesize delegate;
 @synthesize pdfURL;
-@synthesize dID;
+@synthesize personID;
 @synthesize comment;
+@synthesize isFavorite;
 
 - (void)awakeFromNib {
     [super awakeFromNib];
@@ -38,9 +39,12 @@
 }
 
 - (IBAction)addToFavorite:(id)sender {
-    [_favorite setImage:[UIImage imageNamed:@"icons8-star-filled-50.png"] forState:UIControlStateNormal];
-    [_favorite setEnabled:NO];
-    [self.delegate addToFavorite:[_fullName text] position:[_positionWork text] placeOfWork:[_placeOfWork text] linkPDF:pdfURL dID:dID];
+    if (isFavorite) {
+        [self.delegate removeFromFavoriteByID:(NSString *)personID name:self.fullName.text];
+    } else {
+        [_favorite setImage:[UIImage imageNamed:@"icons8-star-filled-50.png"] forState:UIControlStateNormal];
+        [self.delegate addToFavorite:[_fullName text] position:[_positionWork text] placeOfWork:[_placeOfWork text] linkPDF:pdfURL personID:personID];
+    }
 }
 
 @end

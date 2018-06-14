@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B14725C920D178310036D9E2 /* Person.m in Sources */ = {isa = PBXBuildFile; fileRef = B14725C820D178310036D9E2 /* Person.m */; };
 		B14767B620CCF0B400BC61F8 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = B14767B520CCF0B400BC61F8 /* AppDelegate.m */; };
 		B14767BC20CCF0B400BC61F8 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B14767BA20CCF0B400BC61F8 /* Main.storyboard */; };
 		B14767BF20CCF0B400BC61F8 /* SearchDeclaration.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = B14767BD20CCF0B400BC61F8 /* SearchDeclaration.xcdatamodeld */; };
@@ -26,6 +27,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B14725C720D178310036D9E2 /* Person.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Person.h; sourceTree = "<group>"; };
+		B14725C820D178310036D9E2 /* Person.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Person.m; sourceTree = "<group>"; };
 		B14767B120CCF0B400BC61F8 /* SearchDeclaration.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SearchDeclaration.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B14767B420CCF0B400BC61F8 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		B14767B520CCF0B400BC61F8 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -123,6 +126,8 @@
 				B1B314E420D011340054AC11 /* WebService.m */,
 				B1B314DD20CFEE790054AC11 /* ManagedCoreData.h */,
 				B1B314DE20CFEE790054AC11 /* ManagedCoreData.m */,
+				B14725C720D178310036D9E2 /* Person.h */,
+				B14725C820D178310036D9E2 /* Person.m */,
 			);
 			name = Model;
 			sourceTree = "<group>";
@@ -237,6 +242,7 @@
 			files = (
 				B1B314E220D00C760054AC11 /* Alert.m in Sources */,
 				B14767E120CCFD7E00BC61F8 /* TableViewCell.m in Sources */,
+				B14725C920D178310036D9E2 /* Person.m in Sources */,
 				B1B314E520D011340054AC11 /* WebService.m in Sources */,
 				B14767E020CCFD7E00BC61F8 /* PDFViewController.m in Sources */,
 				B14767B620CCF0B400BC61F8 /* AppDelegate.m in Sources */,

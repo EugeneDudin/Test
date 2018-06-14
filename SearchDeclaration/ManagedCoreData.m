@@ -35,10 +35,7 @@ static NSString *const BDName = @"Favorite";
     for (NSString *aKey in data.allKeys) {
         [managedObject setValue:[data valueForKey:aKey] forKey:aKey];
     }
-    if ([self error:@"Add"]) {
-        return false;
-    }
-    return true;
+    return [self error:@"ADD"];
 }
 
 - (NSMutableArray *)getData {
@@ -53,19 +50,29 @@ static NSString *const BDName = @"Favorite";
     if (selectedData) {
         [selectedData setValue:value forKey:key];
     }
-    if ([self error:@"Save"]) {
-        return false;
-    }
-    return true;
+    
+    return [self error:@"Save"];
 }
 
 - (BOOL)deleteDataForIndex:(NSInteger)index {
     NSArray *array = [[NSArray alloc] initWithArray:[self getData]];
     [self.context deleteObject:[array objectAtIndex:index]];
-    if ([self error:@"Delete"]) {
-        return false;
+    
+    return [self error:@"Delete"];
+}
+
+- (BOOL)removeDataByID:(NSString *)personID {
+    NSEntityDescription *entity = [NSEntityDescription entityForName:BDName inManagedObjectContext:_context];
+    
+    [_fetchRequest setEntity:entity];
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"id == %@", personID];
+    [_fetchRequest setPredicate: predicate];
+    NSError *error;
+    NSArray *array = [_context executeFetchRequest:_fetchRequest error:&error];
+    if ([array firstObject] != nil) {
+        [self.context deleteObject:[array firstObject]];
     }
-    return true;
+    return [self error:@"DELETE"];
 }
 
 - (BOOL)error:(NSString *)name {

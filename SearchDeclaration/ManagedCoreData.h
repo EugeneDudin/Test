@@ -19,5 +19,5 @@
 - (NSMutableArray *)getData;
 - (BOOL)updateDataAtIndex:(NSInteger)index newValue:(NSString *)value forKey:(NSString *)key;
 - (BOOL)deleteDataForIndex:(NSInteger)index;
-
+- (BOOL)removeDataByID:(NSString *)personID;
 @end

@@ -8,17 +8,14 @@
 
 #import "FindTableViewController.h"
 #import "TableViewCell.h"
+#import "Person.h"
 #import "WebService.h"
 #import "ManagedCoreData.h"
-#import "Alert.h"
+
 
 @interface FindTableViewController ()<CellActionDelegate> {
-    NSMutableDictionary *saveArray;
-    NSMutableArray *name;
-    NSMutableArray *linkPDF;
-    NSMutableArray *placeOfWork;
-    NSMutableArray *position;
-    NSMutableArray *dID;
+    Person *personToSave;
+    NSMutableArray *persons;
     bool isText;
     int totalItems;
     int page;
@@ -31,19 +28,34 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    _alert = [[Alert new] init];
     
     _searchBar.delegate = self;
     _searchBar.frame = CGRectMake(0, 40, 200, 50);
     isText = false;
     page = 1;
+    
+    UITapGestureRecognizer * tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap:)];
+    [self.view addGestureRecognizer:tap];
+    
 }
 
 -(void)viewWillAppear:(BOOL)animated {
+    persons = [[NSMutableArray alloc] init];
     [self.navigationController.navigationBar.topItem setTitle: @"Search"];
-    [self.tableView reloadData];
-    _managedCoreData = [[ManagedCoreData alloc] init];
-    self.favoriteDB = [_managedCoreData getData];
     
+    _managedCoreData = [[ManagedCoreData alloc] init];
+    _favoriteID = [[NSMutableArray alloc] init];
+    [_favoriteID removeAllObjects];
+    
+    NSMutableArray *favoriteArray = [[NSMutableArray alloc] init];
+    favoriteArray = [_managedCoreData getData];
+    for (NSString *favorites in [favoriteArray valueForKey:@"id"]) {
+        [_favoriteID addObject:favorites];
+        
+    }
+    
+    [self refresh];
 }
 
 -(void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText {
@@ -55,15 +67,10 @@
 }
 
 - (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar {
-    [name removeAllObjects];
-    [linkPDF removeAllObjects];
-    [position removeAllObjects];
-    [placeOfWork removeAllObjects];
-    [self.tableView reloadData];
     if (isText) {
         page = 1;
         totalItems = 0;
-        [self getJSONData: searchBar.text];
+        [self refresh];
         [self.view endEditing:YES];
     }
 }
@@ -75,32 +82,35 @@
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return name.count;
+    return persons.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     TableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell" forIndexPath:indexPath];
+    Person *person = [[Person alloc] init];
+    if (persons.count >= indexPath.row) {
+        person = [persons objectAtIndex:indexPath.row];
+    } else {
+        return cell;
+    }
+    cell.personID = person.personID;
+    cell.isFavorite = person.isFavorite;
     
-    cell.dID = [dID objectAtIndex:indexPath.row];
-    
-    [cell.favorite setEnabled:YES];
-    [cell.favorite setImage:[UIImage imageNamed:@"icons8-star-50.png"] forState:UIControlStateNormal];
-    for (NSString * coreID in [_favoriteDB valueForKey:@"id"]) {
-        if ([coreID isEqualToString:[dID objectAtIndex:indexPath.row]]) {
-            [cell.favorite setImage:[UIImage imageNamed:@"icons8-star-filled-50.png"] forState:UIControlStateNormal];
-            [cell.favorite setEnabled:NO];
-        }
+    if (person.isFavorite) {
+        [cell.favorite setImage:[UIImage imageNamed:@"icons8-star-filled-50.png"] forState:UIControlStateNormal];
+    } else {
+        [cell.favorite setImage:[UIImage imageNamed:@"icons8-star-50.png"] forState:UIControlStateNormal];
     }
     
-    if ([[linkPDF objectAtIndex:indexPath.row] isEqual:@"-"]) {
+    if ([person.linkPDF isEqual:@"-"]) {
         [cell.pdfButton setEnabled:NO];
     } else {
-        cell.pdfURL = [linkPDF objectAtIndex: indexPath.row];
+        cell.pdfURL = person.linkPDF;
     }
     
-    cell.fullName.text = [name objectAtIndex:indexPath.row];
-    cell.placeOfWork.text = [position objectAtIndex:indexPath.row];
-    cell.positionWork.text = [placeOfWork objectAtIndex:indexPath.row];;
+    cell.fullName.text = person.fullName;
+    cell.placeOfWork.text = person.placeOfWork;
+    cell.positionWork.text = person.positionWork;
     
     cell.delegate = self;
     
@@ -111,7 +121,7 @@
     NSInteger lastSectionIndex = [tableView numberOfSections] - 1;
     NSInteger lastRowIndex = [tableView numberOfRowsInSection:lastSectionIndex] - 1;
     if ((indexPath.section == lastSectionIndex) && (indexPath.row == lastRowIndex)) {
-        if (totalItems != name.count) {
+        if (totalItems != persons.count) {
             page += 1;
             [self getJSONData:_searchBar.text];
         }
@@ -128,48 +138,20 @@
     [self.navigationController pushViewController:controller animated:YES];
 }
 
--(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF dID:(NSString *)dID {
-    [self.tableView setUserInteractionEnabled:NO];
+-(void)addToFavorite:(NSString *)fullName position:(NSString *)position placeOfWork:(NSString *)placeOfWork linkPDF:(NSString *)linkPDF personID:(NSString *)personID {
+    personToSave = [[Person alloc] initPersonFullName:fullName position:position placeOfWork:placeOfWork linkPDF:linkPDF  personID:personID];
     
-    saveArray = [[NSMutableDictionary alloc]init];
-    [saveArray setValue:fullName forKey:@"fullName"];
-    [saveArray setValue:position forKey:@"position"];
-    [saveArray setValue:placeOfWork forKey:@"placeOfWork"];
-    [saveArray setValue:linkPDF forKey:@"linkPDF"];
-    [saveArray setValue:dID forKey:@"id"];
-    
-    commentTF = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, 50)];
-    [commentTF setReturnKeyType:UIReturnKeyDone];
-    [commentTF setBorderStyle:UITextBorderStyleNone];
-    commentTF.leftViewMode = UITextFieldViewModeAlways;
-    
-    UIView *paddingView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 10, 50)];
-    commentTF.leftView = paddingView;
-    
-    commentTF.placeholder = @"Додати коментар";
-    commentTF.backgroundColor = [UIColor whiteColor];
-    commentTF.layer.cornerRadius = 15.0;
-    commentTF.layer.borderWidth = 2.0;
-    commentTF.layer.borderColor = [UIColor lightGrayColor].CGColor;
-    commentTF.layer.masksToBounds = YES;
-    [commentTF becomeFirstResponder];
-    
-    commentTF.delegate = self;
-    
-    [self.view addSubview:commentTF];
+    [self presentViewController:[_alert showAlertComment:personToSave message:fullName title:@"Додати" comment:@""] animated:YES completion:nil];
+    _alert.delegate = self;
 }
 
+-(void)removeFromFavoriteByID:(NSString *)personID name:(NSString *)name {
+    [self presentViewController:[_alert showAlertDelete:personID message:name title:@"Bидалити"] animated:YES completion:nil];
+    _alert.delegate = self;
+}
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
-    [commentTF removeFromSuperview];
-    [saveArray setValue:textField.text forKey:@"comment"];
-    [commentTF endEditing:YES];
-    ManagedCoreData *managedCoreData = [[ManagedCoreData alloc] init];
-    if(![managedCoreData addData:saveArray]) {
-        [Alert showAlertMessage:@"Додати не вдалося" title:@"Помилка"];
-    }
-    [self.tableView setUserInteractionEnabled:YES];
-    return YES;
+    return NO;
 }
 
 - (void)getJSONData:(NSString *)premeter {
@@ -178,7 +160,7 @@
         if (error == nil) {
             [self parseJSON:data];
         } else {
-            [self presentViewController:[Alert showAlertMessage:error.localizedDescription title:@"Помилка"] animated:YES completion:nil];
+            [self presentViewController:[_alert showAlertMessage:error.localizedDescription title:@"Помилка"] animated:YES completion:nil];
         }
         [self reloadTableView];
         [self stopActivityIndicator];
@@ -198,8 +180,8 @@
             totalItems = [[item objectForKey:@"totalItems"] intValue];
         }
         if (error) {
-            if (!name || name.count == 0 || name.count !=  totalItems) {
-                [self presentViewController:[Alert showAlertMessage:message title:@"Помилка"] animated:YES completion:nil];
+            if (!persons || persons.count == 0 || persons.count !=  totalItems) {
+                [self presentViewController:[_alert showAlertMessage:message title:@"Помилка"] animated:YES completion:nil];
             }
             [self stopActivityIndicator];
             return;
@@ -207,43 +189,26 @@
         
         NSDictionary *dict1 = [parsedJSONArray objectForKey:@"items"];
         
-        if (dict1 == nil && name.count == totalItems) {
+        if (dict1 == nil && persons.count == totalItems) {
             return;
         } else if (dict1 == nil) {
-            [self presentViewController:[Alert showAlertMessage:@"" title:@"Помилка"] animated:YES completion:nil];
+            [self presentViewController:[_alert showAlertMessage:@"" title:@"Помилка"] animated:YES completion:nil];
         } else {
-            if (page == 1) {
-                self->name = [NSMutableArray new];
-                self->linkPDF = [NSMutableArray new];
-                self->placeOfWork = [NSMutableArray new];
-                self->position = [NSMutableArray new];
-                self->dID = [NSMutableArray new];
-            }
             for (NSDictionary * dict in dict1) {
-                NSString *name = [NSString stringWithFormat:@"%@ %@", [dict objectForKey:@"lastname"], [dict objectForKey:@"firstname"]];
-                NSString *linkPDF = [dict objectForKey:@"linkPDF"];
-                NSString *placeOfWork = [dict objectForKey:@"placeOfWork"];
-                NSString *position = [dict objectForKey:@"position"];
-                NSString *ID = [dict objectForKey:@"id"];
+                Person *person = [[Person alloc] initPersonFullName:[NSString stringWithFormat:@"%@ %@", [dict objectForKey:@"lastname"], [dict objectForKey:@"firstname"]]
+                                                           position:[dict objectForKey:@"position"] placeOfWork:[dict objectForKey:@"placeOfWork"]
+                                                            linkPDF:[dict objectForKey:@"linkPDF"] personID:[dict objectForKey:@"id"]];
+                [persons addObject:person];
                 
-                [self->dID addObject:ID];
-                [self->name addObject: name ];
-                [self->placeOfWork addObject: placeOfWork];
-                
-                if (linkPDF == nil) {
-                    [self->linkPDF addObject: @"-"];
-                } else {
-                    [self->linkPDF addObject: linkPDF];
-                }
-                
-                if (position == nil) {
-                    [self->position addObject: @"нi"];
-                } else {
-                    [self->position addObject: position];
+                for (NSString *coreID in _favoriteID) {
+                    if ([coreID isEqualToString:person.personID]) {
+                        [person setFavorite:YES];
+                    }
                 }
             }
         }
-        
+    } else {
+        [self presentViewController:[_alert showAlertRefresh:@"Спробувати ще раз?" title:@"Помилка! Забагато запитів"] animated:YES completion:nil];
     }
 }
 
@@ -259,13 +224,59 @@
 - (void)stopActivityIndicator {
     dispatch_sync(dispatch_get_main_queue(), ^{
         [activityIndicatorView stopAnimating];
+        AppDelegate *appDelegate = (AppDelegate*)[[UIApplication sharedApplication] delegate];
+        UIView *subViewArray = appDelegate.window;
+        for (id obj in subViewArray.subviews)
+        {
+            if ([obj isKindOfClass:[UIActivityIndicatorView class]]) {
+                [obj removeFromSuperview];
+            }
+        }
     });
+}
+
+- (void)savePerson:(Person *)person {
+    [personToSave setComment:person.comment];
+    ManagedCoreData *managedCoreData = [[ManagedCoreData alloc] init];
+    if(![managedCoreData addData:[personToSave getPersonDictionary]]) {
+        [self presentViewController:[_alert showAlertMessage:@"Hе вдалося" title:@"Помилка"] animated:YES completion:nil];
+    }
+    [_favoriteID addObject:personToSave.personID];
+    
+    for (int i = 0; i <= persons.count-1; i++) {
+        if ([[[persons objectAtIndex:i] personID] isEqualToString:personToSave.personID]) {
+            [[persons objectAtIndex:i] setIsFavorite:YES];
+        }
+    }
+    [self refresh];
+}
+
+- (void)deletePersonByID:(NSString *)personID {
+    if (![_managedCoreData removeDataByID:personID]) {
+        [self presentViewController:[_alert showAlertMessage:@"Hе вдалося" title:@"Помилка"] animated:YES completion:nil];
+    }
+    if ([_favoriteID containsObject:personID]) {
+        [persons removeAllObjects];
+        [_favoriteID removeObject:personID];
+        [self getJSONData:_searchBar.text];
+    }
+}
+
+- (void)refresh {
+    if (_searchBar.text.length > 0) {
+        [persons removeAllObjects];
+        [self getJSONData:_searchBar.text];
+    }
 }
 
 -(BOOL)prefersStatusBarHidden{
     return YES;
 }
 
+- (void)handleTap:(UITapGestureRecognizer *)recognizer {
+    [_searchBar endEditing:YES];
+    
+}
 
 
 @end
